@@ -1,0 +1,37 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(shiny)
+library(tidyverse)
+
+ui<-fluidPage(
+    
+  # Copy the line below to make a set of radio buttons
+  radioButtons("radio", label = h3("Radio buttons"),
+    choices = list("BMI" = "BMI", "Cholesterol level" = "CL", "DIABETES" = "DIABETES","BP" = "BP "), 
+    selected = 1),
+  
+  hr(),
+  fluidRow(column(3, verbatimTextOutput("value")))
+  
+)
+
+server <- function(input, output) {
+  
+  output$value <- renderPrint({ input$radio })
+  
+
+  
+}
+
+shinyApp(ui, server)
+
+
+```
+
+
+

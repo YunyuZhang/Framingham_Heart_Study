@@ -1,0 +1,179 @@
+---
+title: "615 Pre_EDA"
+group: "Akatsuki"
+output: html_document
+---
+## Load Package & Read the Data
+```{r}
+library(tidyverse)
+library(dplyr)
+library(plyr) 
+library(ggplot2) 
+frm<- read_csv("data/frmgham2.csv")
+```
+
+##Gender and Age Distribution
+```{r}
+pop_tb <- as.data.frame(table(frm$AGE, frm$SEX))
+pop_tb
+names(pop_tb)[1] <- paste("Age")
+names(pop_tb)[2] <- paste("Gender")
+pop_tb$Age <- as.numeric(as.character(pop_tb$Age))
+# Plot Age Range with respective Frequencies and label with Gender orientation
+ggplot(pop_tb, aes(x = Age, y = Freq, fill = Gender)) +
+ # Define each gender in barplot distribution
+geom_bar(data = subset(pop_tb, Gender == 1), stat = "identity", mapping = aes(y = Freq), color="grey", size=0.2) +
+ geom_bar(data = subset(pop_tb, Gender == 2), stat = "identity", position = "identity", mapping = aes(y = -Freq), color="grey", size=0.2) +
+ # Define the limits on scales
+ # Turn to horizontal barplots
+ coord_flip() +
+ # Title, Legend
+ theme_bw() +
+ xlab("Age (years)") +
+ ylab("Total of Patients") +
+ ggtitle("Distribution of Patients by Age and Gender")
+
+
+AGE  <- ddply(frm,.(AGE),summarize,number=length(AGE))
+summary(AGE)
+AGE[,'AGE']<- cut(AGE$AGE,breaks=c(30, 45,56, 68, 82),labels=c('32-45','45-56','56-68','68-82'))
+AGE_level <- ddply(AGE,.(AGE),summarize,number=sum(number))
+ggplot(AGE_level, aes(x = "", y = number, fill = AGE)) + 
+  geom_bar(stat = "identity") + 
+  coord_polar(theta = "y") +
+  labs(title = "AGE Distribution") 
+```
+
+## Education Levels vs disease 
+### PREVHYP(P Prevalent Hypertensive)
+```{r}
+frm_vhyp <- filter(frm,PREVHYP == 1)
+frm_vhyp  <- ddply(frm_vhyp,.(educ),summarize,number=length(PREVHYP)) 
+frm_vhyp$perc <- frm_vhyp$number/sum(frm_vhyp$number)
+head(frm_vhyp)
+frm_vhyp <- na.omit(frm_vhyp)
+head(frm_vhyp)
+ggplot(frm_vhyp,aes(educ,number,fill=educ)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The number of people of different eduacation levels with vhyp")
+```
+we can tell with PREVHYP, the more educated people are, the less proportion they will have in the diseased population
+
+### PREVCHD(Prevalent Coronary Heart Disease)
+```{r}
+frm_prevchd <- filter(frm,PREVCHD == 1)
+frm_prevchd  <- ddply(frm_prevchd,.(educ),summarize,number=length(PREVCHD)) 
+head(frm_prevchd)
+frm_prevchd <- na.omit(frm_prevchd)
+head(frm_prevchd)
+ggplot(frm_prevchd,aes(educ,number,fill=educ)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The number of people of different eduacation levels with prevchd")
+```
+Group with highest education level is at lowest risk of having Prevalent Coronary Heart Disease
+
+### Having a few Diseases
+```{r}
+frm_dis <- filter(frm,PREVCHD == 1&PREVHYP == 1&DIABETES == 1)
+frm_dis  <- ddply(frm_dis,.(educ),summarize,number=length(PREVCHD)) 
+head(frm_dis)
+frm_dis <- na.omit(frm_dis)
+head(frm_dis)
+ggplot(frm_dis,aes(educ,number,fill=educ)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The number of people of different eduacation levels with diseases")
+```
+In these two graphs, we can see with 2-4 levels education, people are less likely to get the disease while level 1 is on high risk of having these diseases. But we cannot say there is an obvious difference among level 2-4. 
+
+## Intial Analysis
+
+Checking the distribution of different traits based on the education
+```{r educ,eval=TRUE}
+frmgham %>% group_by(educ) %>% filter(!is.na(BMI),!is.na(educ)) %>% summarise(mean_bmi=mean(BMI))
+
+frmgham %>% group_by(educ) %>% filter(!is.na(HEARTRTE),!is.na(educ)) %>% summarise(mean_heart_rate=mean(HEARTRTE))
+
+frmgham %>% group_by(educ) %>% filter(!is.na(GLUCOSE),!is.na(educ)) %>% summarise(mean_glucose=mean(GLUCOSE))
+```
+## Intial Analysis
+
+Checking the distribution of different traits based on the education
+```{r educ,eval=TRUE}
+frmgham %>% group_by(educ) %>% filter(!is.na(BMI),!is.na(educ)) %>% summarise(mean_bmi=mean(BMI))
+
+frmgham %>% group_by(educ) %>% filter(!is.na(HEARTRTE),!is.na(educ)) %>% summarise(mean_heart_rate=mean(HEARTRTE))
+
+frmgham %>% group_by(educ) %>% filter(!is.na(GLUCOSE),!is.na(educ)) %>% summarise(mean_glucose=mean(GLUCOSE))
+```
+
+## Discussion for initial analysis
+we analysed the framigham data set to check how a socieconomic status and access to higher levels of education affected factors such as bmi(body mass index),heart rate and glucose level(we assessed glucose levels because constant high glucose level(hyperglycemia) are correlated with high risk for certain lifestyle diseases.
+
+BMI: From our assesment, higher levels of education are associated a lower mean bmi. The bmi increased as education levels decreased: An education level of 1 is associated with the highest bmi which would be expected to put this group at the highest risk for lifestyle diseases such as CHD, stroke, high bloop pressure and diabetes.
+
+Overall, a lower heart rate at rest indicated more efficient heart function and better cardiovascular fitness and vice-versa.
+Heart Rate: As would be expected, the lowest levels of education would be associated with the highest heart rate which in the long-run would put them at a higher risk for diseases. The mean heart rate for each level of education decreased as education levels increased.
+
+Blood glucose levels range from 90 to 130 mg/dL before meals, and below 180 mg/dL within 1 to 2 hours after a meal. In general, most people without diabetes have blood sugar levels before meals hover around 70 to 80 mg/dL: 60 is normal; for others, 90.Hypoglycemia, also called low blood glucose or low blood sugar, occurs when the level of glucose in your blood drops below normal. For many people with diabetes, that means a level of 70 milligrams per deciliter (mg/dL) or less.
+Glucose: the mean glucose levels decreased as education levels increased. Higher education levels were associated with lower and slightly healthier glucose levels. Overall, the mean glucose levels for all groups were fell within a healthy range for glucose levels.
+
+
+## Discussion for initial analysis
+we analysed the framigham data set to check how a socieconomic status and access to higher levels of education affected factors such as bmi(body mass index),heart rate and glucose level(we assessed glucose levels because constant high glucose level(hyperglycemia) are correlated with high risk for certain lifestyle diseases.
+
+BMI: From our assesment, higher levels of education are associated a lower mean bmi. The bmi increased as education levels decreased: An education level of 1 is associated with the highest bmi which would be expected to put this group at the highest risk for lifestyle diseases such as CHD, stroke, high bloop pressure and diabetes.
+
+Overall, a lower heart rate at rest indicated more efficient heart function and better cardiovascular fitness and vice-versa.
+Heart Rate: As would be expected, the lowest levels of education would be associated with the highest heart rate which in the long-run would put them at a higher risk for diseases. The mean heart rate for each level of education decreased as education levels increased.
+
+Blood glucose levels range from 90 to 130 mg/dL before meals, and below 180 mg/dL within 1 to 2 hours after a meal. In general, most people without diabetes have blood sugar levels before meals hover around 70 to 80 mg/dL: 60 is normal; for others, 90.Hypoglycemia, also called low blood glucose or low blood sugar, occurs when the level of glucose in your blood drops below normal. For many people with diabetes, that means a level of 70 milligrams per deciliter (mg/dL) or less.
+Glucose: the mean glucose levels decreased as education levels increased. Higher education levels were associated with lower and slightly healthier glucose levels. Overall, the mean glucose levels for all groups were fell within a healthy range for glucose levels.
+
+## Logistic Models
+
+Some of the early logistic models
+
+```{r logistic, eval=TRUE}
+#Predicting presence of Coronary Heart Disease using risk factors
+beta <- coef(glm(PREVCHD ~ BMI + TOTCHOL + AGE + SYSBP + GLUCOSE + CIGPDAY + LDLC,data=frm,family=binomial()))
+
+#Predicting prevalence of Stroke using risk factors
+beta_1 <- coef(glm(PREVSTRK ~ BMI + TOTCHOL + AGE + SYSBP + DIABP + GLUCOSE + CIGPDAY + LDLC,data=frm,family=binomial()))
+
+preval_chd <- as.tibble(as.list(beta[-1])) %>% gather(risk_factor,coef)
+
+preval_strk <- as.tibble(as.list(beta_1[-1])) %>% gather(risk_factor,coef)
+
+ggplot(preval_strk,aes(reorder(factor(risk_factor), coef), coef)) + geom_point()
+
+ggplot(preval_chd,aes(reorder(factor(risk_factor), coef), coef)) + geom_point()
+
+```
+## Discussion for the first logistic regression model
+For this part,we used a logistic regression model to predict the presence of Coronary Heart Disease using risk factors such as BMIBody Mass Index(BMI), TOTCHOL(Total Cholestrol levels), AGE(Age), Systolic Blood Pressure(SYSBP), GLUCOSE, the number of cigarettes per day(CIGPDAY)  and  Blood levels of Low-density lipoprotein (LDL) is one of the body’s lipoproteins and an important carrier of cholesterol.LDL cholesterol (LDL-C) are often assessed when evaluating the risk of future heart disease.
+
+AGE:From our model, age was the highest risk factor for predicting the presence of Coronary Heart Disease. It would be expected that the older one gets, the higher the risk for developing chronic and lifestyle diseases.
+
+Blood Pressure(BP):Blood Pressure is read in two readings. The first reading(The top number)refers to the amount of pressure in your arteries during the contraction of your heart muscle and is called systolic pressure(SP:SYSBP). The second reading(the bottom number) refers to your blood pressure when your heart muscle is between beats. This is called diastolic pressure(DP: DIABP). A blood pressure less than 120/80 mmHg is normal. A blood pressure of 140/90 mmHg or more is too high. People with levels in between 120/80 and 140/90 have a condition called prehypertension, which means they are at high risk for high blood pressure.
+From our model, we assessed that the diastolic blood pressure put one at a higher risk for presence of Coronary Heart Disease(after AGE) more than the systolic blood pressure.
+
+Another important distinction was noted between TOTAL CHOL level and LDLC levels. One would expect higher levels of total cholestrol(TOTCHOL) to be a higher predictor but using logistic regression model to asses the framigham dataset, Higher Levels of Low-density lipoprotein (LDL) put one at a higher risk of cornary heart disease more than the former.
+
+Overall,Body Mass Index(BMI) was the lowest predictor for the presence of Coronary Heart Disease.
+
+## Looking at the healthy subset of the people
+```{r healthy, eval=TRUE}
+# Create a subset of healthy individuals
+healthy_set <- frmgham_mod %>% filter(CURSMOKE == 0, DIABP < 80, SYSBP < 120, DIABETES == 0,DEATH==0,BMI_Class=='Normal')
+
+# Heart rate distribution in healthy people
+ggplot(healthy_set, aes(x = HEARTRTE,fill = as.factor(SEX))) + 
+  #geom_histogram(color = "red", fill = "white") +
+  geom_density(alpha = 0.25)
+
+```
+##Discussion for the last graph
+Looking at the healthy subset of the people
+For this part, we created a subset(class) using of healthy individuals from our dataset by assigning normal ranges associated with good health for the risk factors: These were no smoking, a diastolic blood pressure reading of less than 80(DIABP < 80), a systolic blood pressure reading of less than 120(SYSBP < 120), no presence of diabetes(DIABETES= 0), no death(DEATH=0), and a normal Body Mass Index(BMI_Class=='Normal'). We then used this factors to look at the heart rate for different sexes. From our assesment, after normalizing all risk factors, one sex still had a higher heart rate than the other.
+
+

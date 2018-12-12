@@ -1,0 +1,47 @@
+---
+title: "project"
+output: html_document
+---
+
+```{r readFile}
+library(tidyverse)
+dataset <- read_csv("data/frmgham2.csv")
+dataset
+```
+
+
+
+```{r genderAgeDistribution}
+
+pop_tb <- as.data.frame(table(dataset$AGE, dataset$SEX))
+pop_tb
+
+names(pop_tb)[1] <- paste("Age")
+names(pop_tb)[2] <- paste("Gender")
+
+pop_tb$Age <- as.numeric(as.character(pop_tb$Age))
+
+
+# Plot Age Range with respective Frequencies and label with Gender orientation
+ggplot(pop_tb, aes(x = Age, y = Freq, fill = Gender)) + 
+  # Define each gender in barplot distribution
+geom_bar(data = subset(pop_tb, Gender == 1), stat = "identity", mapping = aes(y = Freq), color="grey", size=0.2) + 
+  geom_bar(data = subset(pop_tb, Gender == 2), stat = "identity", position = "identity", mapping = aes(y = -Freq), color="grey", size=0.2) +
+  # Define the limits on scales
+ 
+  # Turn to horizontal barplots
+  coord_flip() +
+  # Title, Legend
+  theme_bw() +
+  xlab("Age (years)") + 
+  ylab("Total of Patients") +
+  ggtitle("Distribution of Patients by Age and Gender")
+
+```
+**`[==[`**
+From the graph, we can see that there are more females(green) then males(orange) involved in this study. Participants were mainly distributed among age 45 – 60. From the graph, we can know that females who are 52 years ago and males who are 54 years ago are more likely to have heart disease. 
+**`]==]`**
+```{r }
+
+```
+

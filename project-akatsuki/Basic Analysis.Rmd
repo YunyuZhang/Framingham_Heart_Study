@@ -1,0 +1,116 @@
+---
+title: "Basic Data Analysis"
+author: "Lan Yang"
+date: "November 18, 2018"
+output: html_document
+---
+## read the data ###
+```{r}
+library(tidyverse)
+library(dplyr) # this package has more concise coding grammer than %>%
+library(plyr) #this package is complementary with dplyr
+library(ggplot2) # used for adding titles to ggplot
+frm<- read_csv("frmgham2.csv")
+str(frm)
+```
+##1##
+## to see the difference between male and female on the terms of some variables
+## STROKE
+```{r}
+STRK <- ddply(frm,.(SEX,PREVSTRK),summarize,number=length(PREVSTRK))
+STRK_percent <- ddply(STRK, 
+                 .(SEX), 
+                 .fun=function(x){
+                   transform(x, percentage=with(x,ave(number,PREVSTRK)/sum(number)))
+                 })
+head(STRK_percent)
+ggplot(STRK_percent,aes(x = factor(SEX), y = percentage, fill = factor(PREVSTRK))) +
+  geom_bar(position ="dodge", stat ="identity") +
+  labs(title = "The percentage of STROKE in each gender") 
+###Stroke seems not to be gender-dependent.
+```
+## DIABETES 
+```{r}
+DIABETES  <- ddply(frm,.(SEX,DIABETES),summarize,number=length(DIABETES))
+DIABETES_percent <- ddply(DIABETES, 
+                .(SEX), 
+                .fun=function(x){
+                  transform(x, percentage=with(x,ave(number,DIABETES)/sum(number)))
+                })
+head(DIABETES_percent)
+ggplot(DIABETES_percent,aes(x = factor(SEX), y = percentage, fill = factor(DIABETES))) +
+  geom_bar(position ="dodge", stat ="identity") +
+  labs(title = "The percentage of DIABETES in each gender")
+```
+## PREVHYP(P Prevalent Hypertensive)
+```{r}
+VHYP <- ddply(frm,.(SEX,PREVHYP),summarize,number=length(PREVHYP))
+VHYP_percent <- ddply(VHYP, 
+                      .(SEX), 
+                      .fun=function(x){
+                        transform(x, percentage=with(x,ave(number,PREVHYP)/sum(number)))
+                      })
+head(VHYP_percent)
+ggplot(VHYP_percent,aes(x = factor(SEX), y = percentage, fill = factor(PREVHYP))) +
+  geom_bar(position ="dodge", stat ="identity") +
+  labs(title = "The percentage of PREVHYP in each gender") 
+### According to the results above, we cannot say that there is difference between male and female on the terms of prevalence Angina Pectoris.
+```
+##2##
+## to see the structure of age
+```{r}
+AGE  <- ddply(frm,.(AGE),summarize,number=length(AGE))
+summary(AGE)
+ggplot(AGE,aes(x = factor(AGE), y = number)) +
+  geom_bar(position ="dodge", stat ="identity",color = 'white') +
+  labs(title = "AGE Groups") 
+
+AGE[,'AGE']<- cut(AGE$AGE,breaks=c(30, 45,56, 68, 82),labels=c('32-45','45-56','56-68','68-82'))
+AGE_level <- ddply(AGE,.(AGE),summarize,number=sum(number))
+
+ggplot(AGE_level, aes(x = "", y = number, fill = AGE)) + 
+  geom_bar(stat = "identity") + 
+  coord_polar(theta = "y") +
+  labs(title = "AGE Distribution") 
+```
+
+### To see if there is a difference among differently educated people with diseases
+### in this part, we only select the population with specific desease
+### PREVHYP(P Prevalent Hypertensive)
+```{r}
+frm_vhyp <- filter(frm,PREVHYP == 1)
+frm_vhyp  <- ddply(frm_vhyp,.(educ),summarize,number=length(PREVHYP)) 
+frm_vhyp$perc <- frm_vhyp$number/sum(frm_vhyp$number)
+head(frm_vhyp)
+frm_vhyp <- na.omit(frm_vhyp)
+head(frm_vhyp)
+ggplot(frm_vhyp,aes(educ,number,fill=educ)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The number of people of different eduacation levels with vhyp")
+### we can tell with PREVHYP, the more educated people are, the less proportion they will have in the diseased population
+```
+### PREVCHD(Prevalent Coronary Heart Disease)
+```{r}
+frm_prevchd <- filter(frm,PREVCHD == 1)
+frm_prevchd  <- ddply(frm_prevchd,.(educ),summarize,number=length(PREVCHD)) 
+head(frm_prevchd)
+frm_prevchd <- na.omit(frm_prevchd)
+head(frm_prevchd)
+ggplot(frm_prevchd,aes(educ,number,fill=educ)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The number of people of different eduacation levels with prevchd")
+###group with highest education level is at lowest risk of having Prevalent Coronary Heart Disease
+```
+### have a few diseases
+```{r}
+frm_dis <- filter(frm,PREVCHD == 1&PREVHYP == 1&DIABETES == 1)
+frm_dis  <- ddply(frm_dis,.(educ),summarize,number=length(PREVCHD)) 
+head(frm_dis)
+frm_dis <- na.omit(frm_dis)
+head(frm_dis)
+ggplot(frm_dis,aes(educ,number,fill=educ)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The number of people of different eduacation levels with diseases")
+
+### in these two graphs we can see with 2-4 levels education, people are less likely to get the disease while level 1 is on high risk of having these diseases. But we cannot say there is an obvious difference among level 2-4. 
+```

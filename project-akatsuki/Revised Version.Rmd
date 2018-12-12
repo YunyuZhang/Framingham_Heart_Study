@@ -1,0 +1,249 @@
+---
+title: "615 Pre_EDA"
+output:
+  pdf_document: default
+  html_document: default
+group: Akatsuki
+---
+## Load Package & Read the Data
+```{r}
+library(tidyverse)
+library(scales) 
+frm <- read.csv("frmgham2.csv", header = T)
+frmgham_k <- read_csv('framingham.csv')
+
+problems(frm)
+problems(frmgham_k)
+```
+
+##Gender and Age Distribution
+```{r}
+# the distribution of AGE in total
+AGE  <- frm %>% 
+  group_by(AGE) %>%
+  summarise (n = n()) 
+ggplot(AGE,aes(x = factor(AGE), y = n)) +
+  geom_bar(position ="dodge", stat ="identity",color = 'blue') +
+  labs(title = "The number of AGE") 
+
+# put the AGE into levels
+AGE_level<- frm %>% 
+  mutate(AGE_levels=case_when(AGE<45~'30-45',AGE >= 45 & AGE <56 ~ '45-56',AGE >= 56 & AGE < 68 ~ '56-68',AGE>=68 & AGE<=82 ~ '68-82')) 
+
+AGE_level  <- AGE_level %>% 
+  group_by(AGE_levels) %>%
+  summarise (n = n()) 
+head(AGE_level)
+
+myLabel = as.vector(AGE_level$AGE_levels)
+myLabel = paste(myLabel, "(", round(AGE_level$n /sum(AGE_level$n) * 100, 2), "%)", sep = "")
+
+ggplot(AGE_level, aes(x = "", y = n, fill = AGE_levels)) + 
+  geom_bar(stat = "identity", width = 1) +    
+  coord_polar(theta = "y") + 
+  labs(x = "", y = "", title = "") + 
+  theme(axis.ticks = element_blank()) + 
+  theme(legend.title = element_blank(), legend.position = "top") + 
+  scale_fill_discrete(breaks = AGE_level$AGE_levels, labels = myLabel) +
+  labs(title = "The percentage of AGE levels")
+
+
+# gender
+pop_tb <- as.data.frame(table(frm$AGE, frm$SEX))
+pop_tb
+names(pop_tb)[1] <- paste("Age")
+names(pop_tb)[2] <- paste("Gender")
+pop_tb$Age <- as.numeric(as.character(pop_tb$Age))
+# Plot Age Range with respective Frequencies and label with Gender orientation
+ggplot(pop_tb, aes(x = Age, y = Freq, fill = Gender)) +
+ # Define each gender in barplot distribution
+geom_bar(data = subset(pop_tb, Gender == 1), stat = "identity", mapping = aes(y = Freq), color="grey", size=0.2) +
+ geom_bar(data = subset(pop_tb, Gender == 2), stat = "identity", position = "identity", mapping = aes(y = -Freq), color="grey", size=0.2) +
+ # Define the limits on scales
+ # Turn to horizontal barplots
+ coord_flip() +
+ # Title, Legend
+ theme_bw() +
+ xlab("Age (years)") +
+ ylab("Total of Patients") +
+ ggtitle("Distribution of Patients by Age and Gender")
+```
+From the graph, we can see that there are more females(green) then males(orange) involved in this study. Participants were mainly distributed among age 45 – 60. From the graph, we can know that females who are 52 years ago and males who are 54 years ago are more likely to have heart disease.
+
+## Education Levels vs disease 
+### PREVHYP(P Prevalent Hypertensive)
+```{r}
+frm_vhyp <- frm %>% filter(!is.na(SEX),!is.na(educ),PREVHYP == 1) %>%
+  group_by(educ,PREVHYP) %>%
+  summarise (n = n())
+head(frm_vhyp)
+ggplot(frm_vhyp,aes(educ,n,fill=educ)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The number of people of different education levels with vhyp")
+```
+we can tell with PREVHYP, the more educated people are, the less proportion they will have in the diseased population
+
+### PREVCHD(Prevalent Coronary Heart Disease)
+```{r}
+frm_vhyp <- frm %>% filter(!is.na(SEX),!is.na(educ),PREVHYP == 1) %>%
+  group_by(educ,PREVHYP) %>%
+  summarise (n = n())
+head(frm_vhyp)
+ggplot(frm_vhyp,aes(educ,n,fill=educ)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The number of people of different education levels with vhyp")
+```
+Group with highest education level is at lowest risk of having Prevalent Coronary Heart Disease
+
+### Having a few Diseases
+```{r}
+frm_dis <- frm %>% filter(!is.na(PREVCHD),!is.na(educ),PREVCHD == 1&PREVHYP == 1&DIABETES == 1) %>%
+  group_by(educ) %>%
+  summarise (n = n())
+
+head(frm_dis)
+ggplot(frm_dis,aes(educ,n,fill=educ)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The number of people of different education levels with diseases")
+```
+
+In these two graphs, we can see with 2-4 levels education, people are less likely to get the disease while level 1 is on high risk of having these diseases. But we cannot say there is an obvious difference among level 2-4. 
+
+### The analysis of BMI Based Categorisation
+```{r}
+frm_mod<- frm %>% 
+  mutate(BMI_Class=case_when(BMI<18.5~'Under',BMI >= 18.5 & BMI <25 ~ 'Normal',BMI >= 25 & BMI < 30 ~ 'Over',BMI>=30 & BMI<35 ~ 'Obese',BMI>=35 ~ 'SprObese')) 
+
+# SUMMARY OF Mean Heart Rates by BMI category
+frm_bmi_hrt <- frm_mod %>% filter(!is.na(HEARTRTE) & !is.na(BMI)) %>%
+  group_by(BMI_Class) %>%
+  summarise (n = n(),mean_heart_rate=mean(HEARTRTE)) %>%
+  mutate(freq = n / sum(n))
+# the percentage of population with different BMI #
+ggplot(frm_bmi_hrt,aes(BMI_Class,freq,fill=BMI_Class)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The propotion of people with different BMI") +
+  scale_y_continuous(labels = percent)
+
+ggplot(frm_bmi_hrt,aes(BMI_Class,mean_heart_rate,fill=BMI_Class)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The heartrate of people with different BMI")
+
+# SUMMARY OF Mean Glucose Levels by BMI category
+frm_bmi_glu <- frm_mod %>% filter(!is.na(GLUCOSE) & !is.na(BMI)) %>%
+  group_by(BMI_Class) %>%
+  summarise (mean_glucose=mean(GLUCOSE)) 
+
+ggplot(frm_bmi_glu,aes(BMI_Class,mean_glucose,fill=BMI_Class)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The glucose level of people with different BMI")
+
+# SUMMARY OF percentage pf diabetes by BMI category and SEX
+frm_bmi_dia <- frm_mod %>% filter(!is.na(DIABETES) & !is.na(BMI) & DIABETES == 1) %>%
+  group_by(BMI_Class,SEX) %>% 
+  summarise (n=length(DIABETES))  %>%
+  mutate(freq = n / sum(n))
+head(frm_bmi_dia)
+ggplot(frm_bmi_dia,aes(BMI_Class,freq,fill=BMI_Class)) +
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("The pecentage of diabetes of people with different BMI and different gender")+
+  scale_y_continuous(labels = percent) +
+  facet_grid(.~SEX)
+```
+
+## Intial Analysis
+
+Checking the distribution of different traits based on the education
+```{r educ,eval=TRUE}
+frm %>% group_by(educ) %>% filter(!is.na(BMI),!is.na(educ)) %>% summarise(mean_bmi=mean(BMI))
+
+frm %>% group_by(educ) %>% filter(!is.na(HEARTRTE),!is.na(educ)) %>% summarise(mean_heart_rate=mean(HEARTRTE))
+
+frm %>% group_by(educ) %>% filter(!is.na(GLUCOSE),!is.na(educ)) %>% summarise(mean_glucose=mean(GLUCOSE))
+```
+
+
+## Discussion for initial analysis
+we analysed the framigham data set to check how a socieconomic status and access to higher levels of education affected factors such as bmi(body mass index),heart rate and glucose level(we assessed glucose levels because constant high glucose level(hyperglycemia) are correlated with high risk for certain lifestyle diseases.
+
+BMI: From our assesment, higher levels of education are associated a lower mean bmi. The bmi increased as education levels decreased: An education level of 1 is associated with the highest bmi which would be expected to put this group at the highest risk for lifestyle diseases such as CHD, stroke, high bloop pressure and diabetes.
+
+Overall, a lower heart rate at rest indicated more efficient heart function and better cardiovascular fitness and vice-versa.
+Heart Rate: As would be expected, the lowest levels of education would be associated with the highest heart rate which in the long-run would put them at a higher risk for diseases. The mean heart rate for each level of education decreased as education levels increased.
+
+Blood glucose levels range from 90 to 130 mg/dL before meals, and below 180 mg/dL within 1 to 2 hours after a meal. In general, most people without diabetes have blood sugar levels before meals hover around 70 to 80 mg/dL: 60 is normal; for others, 90.Hypoglycemia, also called low blood glucose or low blood sugar, occurs when the level of glucose in your blood drops below normal. For many people with diabetes, that means a level of 70 milligrams per deciliter (mg/dL) or less.
+Glucose: the mean glucose levels decreased as education levels increased. Higher education levels were associated with lower and slightly healthier glucose levels. Overall, the mean glucose levels for all groups were fell within a healthy range for glucose levels.
+
+## Logistic Models
+Some of the early logistic models
+```{r logistic, eval=TRUE}
+#Predicting presence of Coronary Heart Disease using risk factors
+beta <- coef(glm(PREVCHD ~ BMI + TOTCHOL + AGE + SYSBP + GLUCOSE + CIGPDAY + LDLC,data=frm,family=binomial()))
+
+#Predicting prevalence of Stroke using risk factors
+beta_1 <- coef(glm(PREVSTRK ~ BMI + TOTCHOL + AGE + SYSBP + DIABP + GLUCOSE + CIGPDAY + LDLC,data=frm,family=binomial()))
+
+preval_chd <- as.tibble(as.list(beta[-1])) %>% gather(risk_factor,coef)
+
+preval_strk <- as.tibble(as.list(beta_1[-1])) %>% gather(risk_factor,coef)
+
+ggplot(preval_strk,aes(reorder(factor(risk_factor), coef), coef)) + geom_point()
+
+ggplot(preval_chd,aes(reorder(factor(risk_factor), coef), coef)) + geom_point()
+
+```
+## Discussion for the first logistic regression model
+For this part,we used a logistic regression model to predict the presence of Coronary Heart Disease using risk factors such as BMIBody Mass Index(BMI), TOTCHOL(Total Cholestrol levels), AGE(Age), Systolic Blood Pressure(SYSBP), GLUCOSE, the number of cigarettes per day(CIGPDAY)  and  Blood levels of Low-density lipoprotein (LDL) is one of the body’s lipoproteins and an important carrier of cholesterol.LDL cholesterol (LDL-C) are often assessed when evaluating the risk of future heart disease.
+
+AGE:From our model, age was the highest risk factor for predicting the presence of Coronary Heart Disease. It would be expected that the older one gets, the higher the risk for developing chronic and lifestyle diseases.
+
+Blood Pressure(BP):Blood Pressure is read in two readings. The first reading(The top number)refers to the amount of pressure in your arteries during the contraction of your heart muscle and is called systolic pressure(SP:SYSBP). The second reading(the bottom number) refers to your blood pressure when your heart muscle is between beats. This is called diastolic pressure(DP: DIABP). A blood pressure less than 120/80 mmHg is normal. A blood pressure of 140/90 mmHg or more is too high. People with levels in between 120/80 and 140/90 have a condition called prehypertension, which means they are at high risk for high blood pressure.
+From our model, we assessed that the diastolic blood pressure put one at a higher risk for presence of Coronary Heart Disease(after AGE) more than the systolic blood pressure.
+
+Another important distinction was noted between TOTAL CHOL level and LDLC levels. One would expect higher levels of total cholestrol(TOTCHOL) to be a higher predictor but using logistic regression model to asses the framigham dataset, Higher Levels of Low-density lipoprotein (LDL) put one at a higher risk of cornary heart disease more than the former.
+
+Overall,Body Mass Index(BMI) was the lowest predictor for the presence of Coronary Heart Disease.
+
+## BMI Based Categorisation
+```{r BMI, eval=TRUE}
+frmgham_mod<- frm %>% 
+  mutate(BMI_Class=case_when(BMI<18.5~'Underweight',BMI >= 18.5 & BMI <25 ~ 'Normal',BMI >= 25 & BMI < 30 ~ 'Overweight',BMI>=30 & BMI<35 ~ 'Obese',BMI>=35 ~ 'Super Obese')) 
+
+# SUMMARY OF Mean Heart Rates by BMI category
+frmgham_mod %>% group_by(BMI_Class) %>% filter(!is.na(HEARTRTE) & !is.na(BMI)) %>% summarise(mean_heart_rate=mean(HEARTRTE))
+
+# SUMMARY OF Mean Glucose Levels by BMI category
+frmgham_mod %>% group_by(BMI_Class) %>% filter(!is.na(GLUCOSE) & !is.na(BMI)) %>% summarise()
+
+frmgham_mod %>% filter(!is.na(GLUCOSE)) %>% group_by(BMI_Class) %>% summarise(count=n())
+
+frmgham_mod <- frmgham_mod %>% mutate(pulse_pressure=SYSBP-DIABP)
+
+```
+
+## Looking at the healthy subset of the people
+```{r healthy, eval=TRUE}
+# Create a subset of healthy individuals
+healthy_set <- frmgham_mod %>% filter(CURSMOKE == 0, DIABP < 80, SYSBP < 120, DIABETES == 0,DEATH==0,BMI_Class=='Normal')
+
+# Heart rate distribution in healthy people
+ggplot(healthy_set, aes(x = HEARTRTE,fill = as.factor(SEX))) + 
+  #geom_histogram(color = "red", fill = "white") +
+  geom_density(alpha = 0.25)
+
+```
+##Discussion for the last graph
+Looking at the healthy subset of the people
+For this part, we created a subset(class) using of healthy individuals from our dataset by assigning normal ranges associated with good health for the risk factors: These were no smoking, a diastolic blood pressure reading of less than 80(DIABP < 80), a systolic blood pressure reading of less than 120(SYSBP < 120), no presence of diabetes(DIABETES= 0), no death(DEATH=0), and a normal Body Mass Index(BMI_Class=='Normal'). We then used this factors to look at the heart rate for different sexes. From our assesment, after normalizing all risk factors, one sex still had a higher heart rate than the other.
+
+## Pulse pressure
+
+Discussion: Pulse pressure is the difference between the systolic and diastolic blood pressure.It represents the force that the heart generates each time it contracts. A low pulse pressure is considered abnormally low if it is less than 25% of the systolic value. Obese and super Obese groups have a higher pluse pressure. A higher pluse pressure means they are unhealty. A higher pulse pressure may reflect leaky heart valves (valve regurgitation),
+
+```{r pulse_pressure}
+frmgham_mod %>% filter(!is.na(BMI_Class)) %>% ggplot(aes(pulse_pressure,fill=BMI_Class)) + geom_density(alpha=0.5) + facet_wrap(~BMI_Class,nrow=2)
+
+```
+
+
+

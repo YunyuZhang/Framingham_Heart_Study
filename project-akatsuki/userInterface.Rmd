@@ -1,0 +1,120 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(scales) 
+frm <- read.csv("frmgham2.csv", header = T)
+frmgham_k <- read_csv('framingham.csv')
+
+
+predication <- function(input_sysBP,input_heartRate,input_glucose,input_age,input_cigsPerDay,input_LDLC,input_HDLC) {
+  input_totchol <- input_LDLC + input_HDLC
+  mod <- glm(TenYearCHD ~ sysBP  + heartRate + glucose + age + cigsPerDay + totChol,data=frmgham_k,family=binomial)
+pred_val <- predict(mod, newdata=data.frame(sysBP=input_sysBP,heartRate=input_heartRate,glucose=input_glucose,age=input_age,cigsPerDay=input_cigsPerDay,totChol = input_totchol), type="response")
+percent_val <- pred_val[1]*100
+str_val <- sprintf("Percentage risk of this person developing heart disease within next decade : %f",percent_val)
+return(str_val)
+
+}
+predication(87,145,87,128,100,160,160)
+
+```
+
+
+```{r}
+library(shiny)
+library(tidyverse)
+
+
+ui <- fluidPage(
+  titlePanel("User's Cardiac Health"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      #selectInput(inputId = "gender", label = "Gender(1 = Male, 0= Female)", choices =c(0,1)),
+      numericInput("age", label = "Age", value = 20),
+      # numericInput("education", label = "Education
+      #        1 = Some High School;
+      #        2 = High School or GED; 
+      #        3 = Some College or Vocational School; 
+      #        4 = college",value = 1),
+      numericInput("cigsPerDay", label = "Cigarettes Per Day", value = 0),
+      #numericInput("BMI", label = "Body Mass Index (BMI)", value = 28),
+      numericInput("LDLC", label = "Low Density Lipoprotein Cholesterol (mg/dL)", value = 100),
+      numericInput("HDLC", label = "High Density Lipoprotein Cholesterol (mg/dL)", value = 120),
+      numericInput("glucose", label = "Casual serum glucose (mg/dL)", value = 75),
+      numericInput("heartBeats", label = "Heart rate (Ventricular rate) in beats/min", value = 80),
+      numericInput("sysBp", label = "Systolic Blood Pressure(mmHg)", value = 100)
+      # numericInput("diaBp", label = "Diastolic Blood Pressure(mmHg)", value = 0)
+      
+      
+    ),
+    
+    mainPanel(
+      verbatimTextOutput("choices"),
+      textOutput("prediction"),
+      br(),
+      paste("lalalalalalalalala text from ikjot"),
+      img(src = "https://github.com/bu-ma415/project-akatsuki/blob/master/img/chole.png",align = "left",height = 300, width = 500),
+      img(src = "https://img.webmd.com/dtmcms/live/webmd/consumer_assets/site_images/article_thumbnails/other/blood_pressure_charts/basic_blood_pressure_chart.png",align = "left",height = 300, width = 500),
+      img(src = "https://github.com/bu-ma415/project-akatsuki/blob/master/img/glucose.png",align = "left",height = 300, width = 500)
+      
+      
+      
+      
+      
+    )
+  )
+)
+
+
+server <- function(input, output) {
+  output$chole <- renderImage(img(src="../www/chole.png", align = "left"))
+  
+  output$choices <- renderText({
+    paste("Here are your basic information ",
+          "Your age is ", input$age,
+          "You have cigarettes per day ",input$cigsPerDay,
+          "Your LDLC is ", input$LDLC,
+          "Your HDLC is ", input$HDLC,
+          "Your glucose is ", input$glucose,
+          "Your heart beat average is ", input$heartBeats,
+          "Your Systolic Blood Pressure is",input$sysBp
+          ,sep="\n")
+          
+    
+  })
+  
+  output$prediction <- renderText({
+    paste(predication(input$sysBp,input$heartBeats,input$glucose,input$age,input$cigsPerDay,input$LDLC,input$HDLC))
+    
+  })
+  
+}
+
+shinyApp(ui, server)
+
+
+```
+
+
+
+```{r chunk1}
+#Variable seletion - AIC
+# Variable selection - BIC
+
+#ROC Curve
+frmgham_k_filt <- frmgham_k %>% drop_na()
+mylogit <- glm(TenYearCHD ~ sysBP + diaBP + BMI + heartRate + glucose + age + cigsPerDay + education + totChol,data=frmgham_k_filt,family=binomial)
+summary(mylogit)
+prob=predict(mylogit,type=c("response"))
+frmgham_k_filt$prob=prob
+library(pROC)
+g <- roc(TenYearCHD ~ prob, data = frmgham_k_filt)
+plot(g)
+
+```
+
